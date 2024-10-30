@@ -2,10 +2,9 @@
 
 namespace App\Http\Controllers;
 
-use Illuminate\Http\Request;
-use App\Http\Controllers\Controller;
-use App\Http\Requests\StoreEmployeeRequest;
 use App\Services\ProjectService;
+use App\Http\Requests\StoreProjectRequest;
+use App\Http\Resources\ProjectResource;
 
 class ProjectController extends Controller
 {
@@ -16,60 +15,26 @@ class ProjectController extends Controller
         $this->projectService = $projectService;
     }
 
+    /**
+     * Display a listing of projects with employees.
+     *
+     * @return \Illuminate\Http\Resources\Json\AnonymousResourceCollection
+     */
     public function index()
     {
-        return $this->projectService->getAllProjects();
+        $projects = $this->projectService->getAllProjects();
+        return ProjectResource::collection($projects);
     }
 
-    public function listProjectsWithEmployees()
+    /**
+     * Store a new project in the database.
+     *
+     * @param \App\Http\Requests\StoreProjectRequest $request
+     * @return \App\Http\Resources\ProjectResource
+     */
+    public function store(StoreProjectRequest $request)
     {
-        $projects = \App\Models\Project::with(['employees' => function ($query) {
-            $query->select('employees.id as employee_id', 'employees.name', 'employee_project.project_id', 'employee_project.role');
-        }])->get();
-
-        return response()->json($projects);
-    }
-
-    public function projectsWithRole($role)
-    {
-        $projects = \App\Models\Project::whereHas('employees', function ($query) use ($role) {
-            $query->where('role', $role);
-        })->get();
-
-        return response()->json($projects);
-    }
-
-    public function updateEmployeeRole($projectId, $employeeId, $newRole)
-    {
-        $project = Project::find($projectId);
-        $employee = Employee::find($employeeId);
-
-        if (!$project || !$employee) {
-            return response()->json(['message' => 'Project or Employee not found'], 404);
-        }
-
-        $validRoles = ['Developer', 'Designer', 'Manager', 'Lead Developer'];
-        if (!in_array($newRole, $validRoles)) {
-            return response()->json(['message' => 'Invalid role specified'], 400);
-        }
-
-        $project->employees()->updateExistingPivot($employeeId, ['role' => $newRole]);
-
-        return response()->json(['message' => 'Role updated successfully']);
-    }
-
-    public function removeEmployeeFromProject($projectId, $employeeId)
-    {
-        $project = \App\Models\Project::find($projectId);
-        $project->employees()->detach($employeeId);
-
-        return response()->json(['message' => 'Employee removed from project']);
-    }
-
-    public function store(StoreEmployeeRequest $request)
-    {
-        $validatedData = $request->validated();
-        Employee::create($validatedData);
-        return response()->json(['message' => 'Employee created successfully']);
+        $project = $this->projectService->createProject($request->validated());
+        return new ProjectResource($project);
     }
 }
