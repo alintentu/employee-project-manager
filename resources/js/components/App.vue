@@ -6,7 +6,7 @@
 </template>
 
 <script>
-import EmployeeList from './EmployeeList.vue';
+import EmployeeList from './employees/EmployeeList.vue';
 
 export default {
   components: {
